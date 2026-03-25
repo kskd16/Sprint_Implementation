@@ -15,8 +15,8 @@ import java.time.LocalDate;
 public class PolicyDTO {
     private Long id;
     private String policyNumber;
-    private Long customerId;          // was userId — fixed to match PolicyResponse
-    private String policyTypeName;    // flattened from policyType.name for simplicity
+    private Long customerId;
+    private PolicyTypeDTO policyType;
     private BigDecimal coverageAmount;
     private BigDecimal premiumAmount;
     private String paymentFrequency;

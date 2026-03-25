@@ -5,32 +5,44 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    @ExceptionHandler(ClaimNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleClaimNotFound(ClaimNotFoundException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(map);
     }
 
-    @ExceptionHandler(InvalidClaimStateException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidState(InvalidClaimStateException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidTransition(InvalidStatusTransitionException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(map);
+    }
+
+    @ExceptionHandler(ClaimDeletionNotAllowedException.class)
+    public ResponseEntity<Map<String, String>> handleDeletionNotAllowed(ClaimDeletionNotAllowedException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(map);
+    }
+
+    @ExceptionHandler(DocumentNotUploadedException.class)
+    public ResponseEntity<Map<String, String>> handleDocumentNotUploaded(DocumentNotUploadedException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(map);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
-    }
-
-    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.of(
-                "timestamp", LocalDateTime.now().toString(),
-                "status", status.value(),
-                "error", message
-        ));
+    public ResponseEntity<Map<String, String>> handleException(Exception ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(map);
     }
 }

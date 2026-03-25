@@ -5,8 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +14,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -24,58 +21,44 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
 
     @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        try {
-            // PRIMARY — Gateway headers (microservice production flow)
-            String userId = request.getHeader("X-User-Id");
-            String role = request.getHeader("X-User-Role");
+        // PRIMARY — Gateway headers (production flow)
+        String userId = request.getHeader("X-User-Id");
+        String role   = request.getHeader("X-User-Role");
 
-            if (userId != null && role != null) {
-                log.info("Authenticated via Gateway headers: userId={}, role={}", userId, role);
-                setAuthentication(userId, role);
-                filterChain.doFilter(request, response);
-                return;
-            }
+        if (userId != null && role != null) {
+            setAuthentication(userId, role);
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            // FALLBACK — JWT token (Postman / Swagger testing)
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtUtil.isTokenValid(token)) {
-                    String extractedUserId = jwtUtil.extractUserId(token);
-                    String extractedRole = jwtUtil.extractRole(token);
-                    if (extractedUserId != null && extractedRole != null) {
-                        log.info("Authenticated via JWT: userId={}, role={}", extractedUserId, extractedRole);
-                        setAuthentication(extractedUserId, extractedRole);
-                    }
-                } else {
-                    log.warn("Invalid JWT token");
+        // FALLBACK — JWT Bearer token (Postman / Swagger testing)
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            if (jwtUtil.validateToken(token)) {
+                String email = jwtUtil.extractUserId(token);
+                String extractedRole = jwtUtil.extractRole(token);
+                if (email != null && extractedRole != null) {
+                    setAuthentication(email, extractedRole);
                 }
             }
-
-        } catch (Exception ex) {
-            log.error("Authentication error: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private void setAuthentication(String userId, String role) {
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                        userId, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
+    private void setAuthentication(String principal, String role) {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
+        );
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

@@ -53,11 +53,20 @@ public class AdminService {
         return updated;
     }
 
-    // Move claim to UNDER_REVIEW — admin starts reviewing
+    // Move claim to UNDER_REVIEW — kept for backward compatibility
+    // NOTE: With the new submit flow, claims arrive at UNDER_REVIEW automatically
+    // after customer calls /submit. This method is now a no-op if claim is already UNDER_REVIEW.
     public ClaimDTO markUnderReview(Long adminId, Long claimId) {
-        ClaimDTO updated = claimFeignClient.updateClaimStatus(claimId, "UNDER_REVIEW");
-        auditLogService.log(adminId, "MARK_UNDER_REVIEW", "Claim", claimId, "Claim moved to under review");
-        return updated;
+        ClaimDTO claim = claimFeignClient.getClaimById(claimId);
+        // Only attempt transition if claim is still in SUBMITTED state
+        if ("SUBMITTED".equals(claim.getStatus())) {
+            ClaimDTO updated = claimFeignClient.updateClaimStatus(claimId, "UNDER_REVIEW");
+            auditLogService.log(adminId, "MARK_UNDER_REVIEW", "Claim", claimId, "Claim moved to under review");
+            return updated;
+        }
+        // Already UNDER_REVIEW — just log and return current state
+        auditLogService.log(adminId, "MARK_UNDER_REVIEW", "Claim", claimId, "Claim already under review");
+        return claim;
     }
 
     // ==================== POLICY MANAGEMENT ====================

@@ -10,14 +10,15 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 
 @Configuration
 public class SwaggerConfig {
-	 @Bean
-	    public OpenAPI openAPI() {
-	        return new OpenAPI()
-	                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-	                .components(new Components()
-	                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
-	                                .type(SecurityScheme.Type.HTTP)
-	                                .scheme("bearer")
-	                                .bearerFormat("JWT")));
-	    }
+
+    @Bean
+    public OpenAPI openAPI() {
+        return new OpenAPI()
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+                .components(new Components()
+                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")));
+    }
 }
