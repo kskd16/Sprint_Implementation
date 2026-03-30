@@ -7,23 +7,20 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Feign client for PolicyService.
+ * Authorization header is forwarded automatically by FeignClientInterceptor.
+ * No X-User-Id or X-User-Role headers needed — JWT principal is used.
+ */
 @FeignClient(name = "policyService")
 public interface PolicyFeignClient {
 
-    // GET /api/policies/admin/all — no headers needed, ADMIN role via JWT
     @GetMapping("/api/policies/admin/all")
     List<PolicyDTO> getAllPolicies();
 
-    // GET /api/policies/{policyId} — requires X-User-Id and X-User-Role headers
-    // Passing ADMIN role so policyService skips ownership check
     @GetMapping("/api/policies/{policyId}")
-    PolicyDTO getPolicyById(
-            @PathVariable Long policyId,
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader("X-User-Role") String role
-    );
+    PolicyDTO getPolicyById(@PathVariable Long policyId);
 
-    // PUT /api/policies/admin/{policyId}/status — correct admin cancel/status endpoint
     @PutMapping("/api/policies/admin/{policyId}/status")
     PolicyDTO updatePolicyStatus(
             @PathVariable Long policyId,

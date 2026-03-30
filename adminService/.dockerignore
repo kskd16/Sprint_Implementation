@@ -1,0 +1,9 @@
+target/
+*.log
+.git
+.gitignore
+.settings
+.classpath
+.project
+.factorypath
+HELP.md

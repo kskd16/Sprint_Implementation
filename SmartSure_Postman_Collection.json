@@ -1,0 +1,1250 @@
+{
+  "info": {
+    "name": "SmartSure Insurance System - Complete API Tests",
+    "description": "Full test suite for SmartSure microservices with JWT tokens and sample data",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{CUSTOMER_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1️⃣ AUTHENTICATION & USER SETUP",
+      "item": [
+        {
+          "name": "1.1 Register New Customer (REAL EMAIL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@gmail.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"Raj\",\n  \"lastName\": \"Kumar\",\n  \"role\": \"CUSTOMER\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/api/auth/register",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "📝 Register a CUSTOMER (use real email to receive notifications)\n\n**TEST DATA:**\n- Email: customer@gmail.com\n- Password: SecurePass123!\n- Role: CUSTOMER\n\n**RESPONSE:** Should return success message"
+          }
+        },
+        {
+          "name": "1.2 Register New Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@smartsure.com\",\n  \"password\": \"AdminPass123!\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"User\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/api/auth/register",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "📝 Register an ADMIN user\n\n**TEST DATA:**\n- Email: admin@smartsure.com\n- Password: AdminPass123!\n- Role: ADMIN"
+          }
+        },
+        {
+          "name": "1.3 Login Customer - Get CUSTOMER_TOKEN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('CUSTOMER_TOKEN', jsonData.token);",
+                  "    pm.environment.set('CUSTOMER_ID', jsonData.userId);",
+                  "    console.log('✅ Customer Token Set: ' + jsonData.token.substring(0, 20) + '...');",
+                  "    console.log('✅ Customer ID: ' + jsonData.userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@gmail.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/api/auth/login",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "🔑 Login as CUSTOMER\n\n**SAVES TO:**\n- {{CUSTOMER_TOKEN}} - Use for customer operations\n- {{CUSTOMER_ID}} - Customer user ID\n\n**RESPONSE EXAMPLE:**\n```json\n{\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"email\": \"customer@gmail.com\",\n  \"userId\": 1,\n  \"role\": \"CUSTOMER\"\n}\n```"
+          }
+        },
+        {
+          "name": "1.4 Login Admin - Get ADMIN_TOKEN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('ADMIN_TOKEN', jsonData.token);",
+                  "    pm.environment.set('ADMIN_ID', jsonData.userId);",
+                  "    console.log('✅ Admin Token Set: ' + jsonData.token.substring(0, 20) + '...');",
+                  "    console.log('✅ Admin ID: ' + jsonData.userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@smartsure.com\",\n  \"password\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/api/auth/login",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "🔑 Login as ADMIN\n\n**SAVES TO:**\n- {{ADMIN_TOKEN}} - Use for admin operations\n- {{ADMIN_ID}} - Admin user ID"
+          }
+        },
+        {
+          "name": "1.5 Auth Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/api/auth/health",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "health"
+              ]
+            },
+            "description": "✅ Verify Auth Service is running"
+          }
+        },
+        {
+          "name": "1.6 Add Customer Info",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Raj\",\n  \"lastName\": \"Kumar\",\n  \"phoneNumber\": \"9876543210\",\n  \"dateOfBirth\": \"1990-05-15\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/user/addInfo",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "user",
+                "addInfo"
+              ]
+            },
+            "description": "📋 Add customer personal details\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "1.7 Get Customer Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/user/getInfo/{{CUSTOMER_ID}}",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "user",
+                "getInfo",
+                "{{CUSTOMER_ID}}"
+              ]
+            },
+            "description": "📖 Retrieve customer information\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "1.8 Add Customer Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street\": \"123 Marine Drive\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"zipCode\": \"400020\",\n  \"country\": \"India\"\n}"
+            },
+            "url": {
+              "raw": "{{AUTH_BASE_URL}}/user/addAddress/{{CUSTOMER_ID}}",
+              "host": [
+                "{{AUTH_BASE_URL}}"
+              ],
+              "path": [
+                "user",
+                "addAddress",
+                "{{CUSTOMER_ID}}"
+              ]
+            },
+            "description": "🏠 Add customer address\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2️⃣ POLICY SERVICE - PUBLIC & CATALOG",
+      "item": [
+        {
+          "name": "2.1 Browse All Policy Types (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policy-types",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policy-types"
+              ]
+            },
+            "description": "📚 View available insurance policies (NO TOKEN NEEDED)\n\n**RESPONSE EXAMPLE:**\n```json\n[\n  {\n    \"id\": 1,\n    \"name\": \"Health Plus\",\n    \"category\": \"HEALTH\",\n    \"basePremium\": 5000,\n    \"coverageAmount\": 500000\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Car Shield\",\n    \"category\": \"AUTO\",\n    \"basePremium\": 3000,\n    \"coverageAmount\": 1000000\n  }\n]\n```"
+          }
+        },
+        {
+          "name": "2.2 Get Policy Type by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policy-types/1",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policy-types",
+                "1"
+              ]
+            },
+            "description": "🔍 Get details of specific policy type"
+          }
+        },
+        {
+          "name": "2.3 Calculate Premium (No Auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyTypeId\": 1,\n  \"term\": 12\n}"
+            },
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policies/calculate-premium",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "calculate-premium"
+              ]
+            },
+            "description": "💰 Calculate insurance premium cost\n\n**RESPONSE EXAMPLE:**\n```json\n{\n  \"policyTypeId\": 1,\n  \"term\": 12,\n  \"basePremium\": 5000,\n  \"totalPremium\": 60000,\n  \"monthlyPremium\": 5000\n}\n```"
+          }
+        },
+        {
+          "name": "2.4 Purchase Policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyTypeId\": 1,\n  \"startDate\": \"2026-04-01\",\n  \"term\": 12\n}"
+            },
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policies/purchase",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "purchase"
+              ]
+            },
+            "description": "✅ Buy an insurance policy\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**RESPONSE EXAMPLE:**\n```json\n{\n  \"id\": 1,\n  \"customerId\": 1,\n  \"policyTypeId\": 1,\n  \"status\": \"ACTIVE\",\n  \"startDate\": \"2026-04-01\",\n  \"endDate\": \"2027-03-31\",\n  \"totalPremium\": 60000\n}\n```"
+          }
+        },
+        {
+          "name": "2.5 Get My Policies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.length > 0) {",
+                  "        pm.environment.set('POLICY_ID', jsonData[0].id);",
+                  "        console.log('✅ Policy ID Set: ' + jsonData[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policies/my",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "my"
+              ]
+            },
+            "description": "📋 View all my purchased policies\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**SAVES:** {{POLICY_ID}} - First policy ID"
+          }
+        },
+        {
+          "name": "2.6 Get Policy Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policies/{{POLICY_ID}}",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "{{POLICY_ID}}"
+              ]
+            },
+            "description": "🔍 Get full details of a specific policy\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "2.7 Get Premium Schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{POLICY_BASE_URL}}/api/policies/{{POLICY_ID}}/premiums",
+              "host": [
+                "{{POLICY_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "{{POLICY_ID}}",
+                "premiums"
+              ]
+            },
+            "description": "📅 View premium payment schedule\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3️⃣ CLAIMS SERVICE - FILE & UPLOAD DOCUMENTS",
+      "item": [
+        {
+          "name": "3.1 Create DRAFT Claim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('CLAIM_ID', jsonData.id);",
+                  "    console.log('✅ Claim ID Set: ' + jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": {{POLICY_ID}},\n  \"description\": \"Accidental damage to car during monsoon. Need windshield replacement.\"\n}"
+            },
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims"
+              ]
+            },
+            "description": "📝 Create a new insurance claim (DRAFT status)\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**SAVES:** {{CLAIM_ID}}\n\n**RESPONSE:**\n```json\n{\n  \"id\": 1,\n  \"customerId\": 1,\n  \"policyId\": 1,\n  \"status\": \"DRAFT\",\n  \"description\": \"...\",\n  \"createdAt\": \"2026-03-30T10:00:00\"\n}\n```"
+          }
+        },
+        {
+          "name": "3.2 Upload Claim Form Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample_claim_form.pdf",
+                  "description": "Upload insurance claim form PDF"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}/upload/claim-form",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}",
+                "upload",
+                "claim-form"
+              ]
+            },
+            "description": "📄 Upload claim form document (PDF/DOC)\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**REQUIRED:** Claim must be in DRAFT status\n\n**HOW TO TEST:**\n1. Create a sample PDF file\n2. Click 'Select Files' and choose it\n3. Send the request"
+          }
+        },
+        {
+          "name": "3.3 Upload Aadhaar Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "aadhaar_scan.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}/upload/aadhaar",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}",
+                "upload",
+                "aadhaar"
+              ]
+            },
+            "description": "🆔 Upload Aadhaar card image (JPG/PNG/PDF)\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "3.4 Upload Evidence Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "damage_photo.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}/upload/evidence",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}",
+                "upload",
+                "evidence"
+              ]
+            },
+            "description": "📸 Upload evidence of damage (Photo/Video)\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**NOTE:** Upload all 3 documents before submitting claim"
+          }
+        },
+        {
+          "name": "3.5 Submit Claim (After All Docs)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}/submit",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}",
+                "submit"
+              ]
+            },
+            "description": "✅ Submit claim for review\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**REQUIRED:** All 3 documents must be uploaded\n\n**STATUS CHANGE:** DRAFT → SUBMITTED → UNDER_REVIEW"
+          }
+        },
+        {
+          "name": "3.6 Get Claim Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}"
+              ]
+            },
+            "description": "📖 View claim details and status\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "3.7 Download Claim Form",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{CLAIM_BASE_URL}}/api/claims/{{CLAIM_ID}}/download/claim-form",
+              "host": [
+                "{{CLAIM_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{CLAIM_ID}}",
+                "download",
+                "claim-form"
+              ]
+            },
+            "description": "⬇️ Download uploaded claim form\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4️⃣ ADMIN DASHBOARD - CLAIMS REVIEW",
+      "item": [
+        {
+          "name": "4.1 Get All Claims (Admin View)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims"
+              ]
+            },
+            "description": "📋 View all claims from all customers\n\n**✅ TOKEN:** {{ADMIN_TOKEN}} (ADMIN ROLE REQUIRED)\n\n**RESPONSE:**\n```json\n[\n  {\n    \"id\": 1,\n    \"customerId\": 1,\n    \"policyId\": 1,\n    \"status\": \"UNDER_REVIEW\",\n    \"description\": \"...\",\n    \"createdAt\": \"2026-03-30T10:00:00\"\n  }\n]\n```"
+          }
+        },
+        {
+          "name": "4.2 Get Claims Under Review",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims/under-review",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims",
+                "under-review"
+              ]
+            },
+            "description": "🔍 Get pending claims waiting for admin review\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "4.3 Get Specific Claim",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims/{{CLAIM_ID}}",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims",
+                "{{CLAIM_ID}}"
+              ]
+            },
+            "description": "📖 View detailed claim information\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "4.4 Mark Claim as Under Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims/{{CLAIM_ID}}/review",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims",
+                "{{CLAIM_ID}}",
+                "review"
+              ]
+            },
+            "description": "👀 Mark claim as being reviewed by this admin\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "4.5 APPROVE Claim 📧 (Sends Email)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"All documents verified. Claim amount approved: ₹50,000. Payment will be processed within 3-5 business days.\"\n}"
+            },
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims/{{CLAIM_ID}}/approve",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims",
+                "{{CLAIM_ID}}",
+                "approve"
+              ]
+            },
+            "description": "✅ APPROVE the claim\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}\n\n**📧 EMAIL SENT:** Approval notification sent to customer's email\n\n**RESPONSE:**\n```json\n{\n  \"id\": 1,\n  \"status\": \"APPROVED\",\n  \"approvedBy\": 2,\n  \"remarks\": \"...\",\n  \"approvedAt\": \"2026-03-30T11:00:00\"\n}\n```"
+          }
+        },
+        {
+          "name": "4.6 REJECT Claim 📧 (Sends Email)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Claim rejected - Evidence does not match policy coverage. Please contact support for appeal process.\"\n}"
+            },
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/claims/{{CLAIM_ID}}/reject",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "claims",
+                "{{CLAIM_ID}}",
+                "reject"
+              ]
+            },
+            "description": "❌ REJECT the claim\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}\n\n**📧 EMAIL SENT:** Rejection notification sent to customer's email with reason"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5️⃣ ADMIN DASHBOARD - OTHER OPERATIONS",
+      "item": [
+        {
+          "name": "5.1 Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/users",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            },
+            "description": "👥 View all registered users\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "5.2 Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/users/{{CUSTOMER_ID}}",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{CUSTOMER_ID}}"
+              ]
+            },
+            "description": "👤 View specific user details\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "5.3 Get All Policies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/policies",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "policies"
+              ]
+            },
+            "description": "📋 View all policies across all customers\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "5.4 Get Audit Logs - All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/audit-logs",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit-logs"
+              ]
+            },
+            "description": "📜 View all system audit logs\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}"
+          }
+        },
+        {
+          "name": "5.5 Get Audit Logs - Recent",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ADMIN_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{ADMIN_BASE_URL}}/api/admin/audit-logs/recent?limit=10",
+              "host": [
+                "{{ADMIN_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit-logs",
+                "recent"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "📊 Get recent admin activity\n\n**✅ TOKEN:** {{ADMIN_TOKEN}}\n\n**QUERY PARAM:** limit=10 (default)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6️⃣ PAYMENT SERVICE - RAZORPAY INTEGRATION",
+      "item": [
+        {
+          "name": "6.1 Initiate Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('RAZORPAY_ORDER_ID', jsonData.razorpayOrderId);",
+                  "    pm.environment.set('PAYMENT_ID', jsonData.id);",
+                  "    console.log('✅ Razorpay Order ID: ' + jsonData.razorpayOrderId);",
+                  "    console.log('✅ Payment ID: ' + jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": {{POLICY_ID}},\n  \"amount\": 5000,\n  \"description\": \"Premium payment for Health Plus policy\"\n}"
+            },
+            "url": {
+              "raw": "{{PAYMENT_BASE_URL}}/api/payments/initiate",
+              "host": [
+                "{{PAYMENT_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "initiate"
+              ]
+            },
+            "description": "💳 Initiate Razorpay payment\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**SAVES:**\n- {{RAZORPAY_ORDER_ID}} - For Razorpay checkout\n- {{PAYMENT_ID}} - Payment reference\n\n**RESPONSE:**\n```json\n{\n  \"id\": 1,\n  \"razorpayOrderId\": \"order_xyz123\",\n  \"razorpayKeyId\": \"rzp_live_abc123\",\n  \"amount\": 5000,\n  \"status\": \"INITIATED\"\n}\n```\n\n**NEXT STEPS:**\n1. Use razorpayOrderId in your frontend Razorpay checkout\n2. After payment success, call 6.2 (Confirm Payment)\n3. After payment failure, call 6.3 (Fail Payment)"
+          }
+        },
+        {
+          "name": "6.2 Confirm Payment (After Razorpay Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"{{RAZORPAY_ORDER_ID}}\",\n  \"razorpayPaymentId\": \"pay_Jda834jd2334\",\n  \"razorpaySignature\": \"9ef4dffbfd84f1318f6739a3ce19f9d85851857ae648f114332d8401e0949a3d\"\n}"
+            },
+            "url": {
+              "raw": "{{PAYMENT_BASE_URL}}/api/payments/confirm",
+              "host": [
+                "{{PAYMENT_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "confirm"
+              ]
+            },
+            "description": "✅ Confirm payment after successful Razorpay transaction\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**REQUIRED:** \n- razorpayPaymentId (from Razorpay response)\n- razorpaySignature (from Razorpay success callback)\n\n**RESPONSE:**\n```json\n{\n  \"id\": 1,\n  \"status\": \"SUCCESS\",\n  \"amount\": 5000,\n  \"paidAt\": \"2026-03-30T12:00:00\"\n}\n```"
+          }
+        },
+        {
+          "name": "6.3 Fail Payment (If User Dismisses)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"{{RAZORPAY_ORDER_ID}}\",\n  \"reason\": \"User dismissed the payment dialog\"\n}"
+            },
+            "url": {
+              "raw": "{{PAYMENT_BASE_URL}}/api/payments/fail",
+              "host": [
+                "{{PAYMENT_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "fail"
+              ]
+            },
+            "description": "❌ Mark payment as failed\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}\n\n**WHEN TO USE:** When user closes checkout or payment fails"
+          }
+        },
+        {
+          "name": "6.4 Get Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{PAYMENT_BASE_URL}}/api/payments/{{PAYMENT_ID}}",
+              "host": [
+                "{{PAYMENT_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "{{PAYMENT_ID}}"
+              ]
+            },
+            "description": "📖 Get payment details\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        },
+        {
+          "name": "6.5 Get My Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CUSTOMER_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{PAYMENT_BASE_URL}}/api/payments/my",
+              "host": [
+                "{{PAYMENT_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "my"
+              ]
+            },
+            "description": "📋 View all my payments\n\n**✅ TOKEN:** {{CUSTOMER_TOKEN}}"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "AUTH_BASE_URL",
+      "value": "http://localhost:8081",
+      "type": "string",
+      "description": "Auth Service Base URL"
+    },
+    {
+      "key": "POLICY_BASE_URL",
+      "value": "http://localhost:8082",
+      "type": "string",
+      "description": "Policy Service Base URL"
+    },
+    {
+      "key": "CLAIM_BASE_URL",
+      "value": "http://localhost:8083",
+      "type": "string",
+      "description": "Claim Service Base URL"
+    },
+    {
+      "key": "ADMIN_BASE_URL",
+      "value": "http://localhost:8084",
+      "type": "string",
+      "description": "Admin Service Base URL"
+    },
+    {
+      "key": "PAYMENT_BASE_URL",
+      "value": "http://localhost:8085",
+      "type": "string",
+      "description": "Payment Service Base URL"
+    },
+    {
+      "key": "CUSTOMER_TOKEN",
+      "value": "",
+      "type": "string",
+      "description": "JWT Token for Customer (Set by Login)"
+    },
+    {
+      "key": "ADMIN_TOKEN",
+      "value": "",
+      "type": "string",
+      "description": "JWT Token for Admin (Set by Login)"
+    },
+    {
+      "key": "CUSTOMER_ID",
+      "value": "",
+      "type": "string",
+      "description": "Customer User ID (Set by Login)"
+    },
+    {
+      "key": "ADMIN_ID",
+      "value": "",
+      "type": "string",
+      "description": "Admin User ID (Set by Login)"
+    },
+    {
+      "key": "POLICY_ID",
+      "value": "",
+      "type": "string",
+      "description": "Policy ID (Set by Get My Policies)"
+    },
+    {
+      "key": "CLAIM_ID",
+      "value": "",
+      "type": "string",
+      "description": "Claim ID (Set by Create Claim)"
+    },
+    {
+      "key": "RAZORPAY_ORDER_ID",
+      "value": "",
+      "type": "string",
+      "description": "Razorpay Order ID (Set by Initiate Payment)"
+    },
+    {
+      "key": "PAYMENT_ID",
+      "value": "",
+      "type": "string",
+      "description": "Payment ID (Set by Initiate Payment)"
+    }
+  ]
+}

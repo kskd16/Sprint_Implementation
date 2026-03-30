@@ -14,6 +14,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * JWT Authentication Filter for PolicyService.
+ *
+ * Reads the Bearer token from the Authorization header, validates it,
+ * and sets the Spring Security context with userId as principal and
+ * ROLE_<role> as the granted authority.
+ *
+ * Only the JWT token is required — no X-User-Id or X-User-Role headers.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -21,7 +30,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
 
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
@@ -29,36 +40,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // PRIMARY — Gateway headers (production flow)
-        String userId = request.getHeader("X-User-Id");
-        String role   = request.getHeader("X-User-Role");
-
-        if (userId != null && role != null) {
-            setAuthentication(userId, role);
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // FALLBACK — JWT Bearer token (Postman / Swagger testing)
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             if (jwtUtil.validateToken(token)) {
-                String email = jwtUtil.extractUserId(token);
-                String extractedRole = jwtUtil.extractRole(token);
-                if (email != null && extractedRole != null) {
-                    setAuthentication(email, extractedRole);
+                String userId = jwtUtil.extractUserId(token);
+                String role   = jwtUtil.extractRole(token);
+                if (userId != null && role != null) {
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userId, null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private void setAuthentication(String principal, String role) {
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                principal, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
-        );
-        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

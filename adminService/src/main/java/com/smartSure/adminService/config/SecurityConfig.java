@@ -12,6 +12,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Security Configuration for AdminService.
+ *
+ * All endpoints require ADMIN role.
+ * Swagger endpoints are publicly accessible.
+ *
+ * @author SmartSure Development Team
+ * @version 2.1
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -29,12 +38,12 @@ public class SecurityConfig {
                 .authenticationEntryPoint((request, response, e) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Unauthorized — valid JWT required\"}");
+                    response.getWriter().write("{\"error\": \"Unauthorized - valid JWT required\"}");
                 })
                 .accessDeniedHandler((request, response, e) -> {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Forbidden — ADMIN role required\"}");
+                    response.getWriter().write("{\"error\": \"Forbidden - ADMIN role required\"}");
                 })
             )
             .authorizeHttpRequests(auth -> auth

@@ -12,15 +12,21 @@ import com.smartSure.claimService.entity.Status;
 import com.smartSure.claimService.exception.ClaimDeletionNotAllowedException;
 import com.smartSure.claimService.exception.ClaimNotFoundException;
 import com.smartSure.claimService.exception.DocumentNotUploadedException;
+import com.smartSure.claimService.messaging.ClaimDecisionEvent;
+import com.smartSure.claimService.messaging.RabbitMQConfig;
 import com.smartSure.claimService.repository.ClaimRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ClaimService {
@@ -28,17 +34,21 @@ public class ClaimService {
     private final ClaimRepository claimRepository;
     private final PolicyClient    policyClient;
     private final UserClient      userClient;
-    private final EmailService    emailService;
+    private final RabbitTemplate  rabbitTemplate;
 
-    // ─────────────────────────────────────────────
-    // CRUD
-    // ─────────────────────────────────────────────
-
-    public ClaimResponse createClaim(ClaimRequest request) {
+    /**
+     * Creates a new DRAFT claim for the authenticated customer.
+     * userId comes from the JWT principal — not from the request body.
+     *
+     * @param customerId userId extracted from JWT by the controller
+     * @param request    contains policyId only
+     */
+    public ClaimResponse createClaim(Long customerId, ClaimRequest request) {
         PolicyDTO policy = policyClient.getPolicyById(request.getPolicyId());
         Claim claim = new Claim();
         claim.setPolicyId(request.getPolicyId());
         claim.setAmount(policy.getAmount());
+        log.info("Claim created — customerId={}, policyId={}", customerId, request.getPolicyId());
         return toResponse(claimRepository.save(claim));
     }
 
@@ -47,83 +57,48 @@ public class ClaimService {
     }
 
     public List<ClaimResponse> getAllClaims() {
-        return claimRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return claimRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public List<ClaimResponse> getAllUnderReviewClaims() {
-        return claimRepository.findByStatus(Status.UNDER_REVIEW)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return claimRepository.findByStatus(Status.UNDER_REVIEW).stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public PolicyDTO getPolicyForClaim(Long claimId) {
-        Claim claim = findOrThrow(claimId);
-        return policyClient.getPolicyById(claim.getPolicyId());
+        return policyClient.getPolicyById(findOrThrow(claimId).getPolicyId());
     }
 
     public void deleteClaim(Long claimId) {
         Claim claim = findOrThrow(claimId);
-        if (claim.getStatus() != Status.DRAFT) {
-            throw new ClaimDeletionNotAllowedException(claimId);
-        }
+        if (claim.getStatus() != Status.DRAFT) throw new ClaimDeletionNotAllowedException(claimId);
         claimRepository.deleteById(claimId);
     }
 
-    // ─────────────────────────────────────────────
-    // SUBMIT — Customer explicitly submits after uploading all 3 docs
-    // ─────────────────────────────────────────────
-
-    /**
-     * Customer manually submits the claim after uploading all 3 documents.
-     * Validates all 3 docs are present — throws DocumentNotUploadedException if any is missing.
-     * On success: DRAFT → SUBMITTED → UNDER_REVIEW in a single call.
-     */
+    // Customer submits after uploading all 3 docs — DRAFT → SUBMITTED → UNDER_REVIEW
     public ClaimResponse submitClaim(Long claimId) {
         Claim claim = findOrThrow(claimId);
+        if (claim.getStatus() != Status.DRAFT)
+            throw new IllegalStateException("Claim " + claimId + " cannot be submitted — not in DRAFT status.");
+        if (claim.getClaimForm() == null)   throw new DocumentNotUploadedException("Claim form", claimId);
+        if (claim.getAadhaarCard() == null) throw new DocumentNotUploadedException("Aadhaar card", claimId);
+        if (claim.getEvidences() == null)   throw new DocumentNotUploadedException("Evidence", claimId);
 
-        if (claim.getStatus() != Status.DRAFT) {
-            throw new IllegalStateException(
-                "Claim " + claimId + " cannot be submitted because it is not in DRAFT status.");
-        }
-
-        if (claim.getClaimForm() == null) {
-            throw new DocumentNotUploadedException("Claim form", claimId);
-        }
-        if (claim.getAadhaarCard() == null) {
-            throw new DocumentNotUploadedException("Aadhaar card", claimId);
-        }
-        if (claim.getEvidences() == null) {
-            throw new DocumentNotUploadedException("Evidence", claimId);
-        }
-
-        // All docs present — DRAFT → SUBMITTED → UNDER_REVIEW
         claim.setStatus(claim.getStatus().moveTo(Status.SUBMITTED));
         claim.setStatus(claim.getStatus().moveTo(Status.UNDER_REVIEW));
-
         return toResponse(claimRepository.save(claim));
     }
 
-    // ─────────────────────────────────────────────
-    // STATUS TRANSITION — Admin only
-    // ─────────────────────────────────────────────
-
+    // Admin moves claim to APPROVED or REJECTED — publishes ClaimDecisionEvent via RabbitMQ
     public ClaimResponse moveToStatus(Long claimId, Status nextStatus) {
         Claim claim = findOrThrow(claimId);
         claim.setStatus(claim.getStatus().moveTo(nextStatus));
         Claim saved = claimRepository.save(claim);
+
         if (nextStatus == Status.APPROVED || nextStatus == Status.REJECTED) {
-            sendDecisionEmail(saved, nextStatus);
+            publishDecisionEvent(saved, nextStatus);
         }
         return toResponse(saved);
     }
-
-    // ─────────────────────────────────────────────
-    // DOCUMENT UPLOAD — no status change on upload
-    // ─────────────────────────────────────────────
 
     public ClaimResponse uploadClaimForm(Long claimId, MultipartFile file) throws IOException {
         Claim claim = findOrThrow(claimId);
@@ -143,10 +118,6 @@ public class ClaimService {
         return toResponse(claimRepository.save(claim));
     }
 
-    // ─────────────────────────────────────────────
-    // DOCUMENT DOWNLOAD
-    // ─────────────────────────────────────────────
-
     public FileData downloadClaimForm(Long claimId) {
         Claim claim = findOrThrow(claimId);
         if (claim.getClaimForm() == null) throw new DocumentNotUploadedException("Claim form", claimId);
@@ -165,41 +136,42 @@ public class ClaimService {
         return claim.getEvidences();
     }
 
-    // ─────────────────────────────────────────────
-    // PRIVATE HELPERS
-    // ─────────────────────────────────────────────
+    // Publish claim decision event — email is handled asynchronously by a listener (or notification service)
+    private void publishDecisionEvent(Claim claim, Status decision) {
+        try {
+            PolicyDTO policy = policyClient.getPolicyById(claim.getPolicyId());
+            UserResponseDto user = userClient.getUserById(policy.getUserId());
+
+            ClaimDecisionEvent event = ClaimDecisionEvent.builder()
+                    .claimId(claim.getId())
+                    .policyId(claim.getPolicyId())
+                    .decision(decision.name())
+                    .amount(claim.getAmount())
+                    .customerEmail(user.getEmail())
+                    .customerName(user.getFirstName())
+                    .decidedAt(LocalDateTime.now())
+                    .build();
+
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.CLAIM_DECISION_KEY, event);
+            log.info("ClaimDecisionEvent published — claimId={}, decision={}", claim.getId(), decision);
+        } catch (Exception e) {
+            log.error("Failed to publish ClaimDecisionEvent for claim {}: {}", claim.getId(), e.getMessage());
+        }
+    }
 
     private Claim findOrThrow(Long claimId) {
-        return claimRepository.findById(claimId)
-                .orElseThrow(() -> new ClaimNotFoundException(claimId));
+        return claimRepository.findById(claimId).orElseThrow(() -> new ClaimNotFoundException(claimId));
     }
 
     private FileData toFileData(MultipartFile file) throws IOException {
         return new FileData(file.getOriginalFilename(), file.getContentType(), file.getBytes());
     }
 
-    private void sendDecisionEmail(Claim claim, Status decision) {
-        try {
-            PolicyDTO policy = policyClient.getPolicyById(claim.getPolicyId());
-            UserResponseDto user = userClient.getUserById(policy.getUserId());
-            emailService.sendClaimDecisionEmail(
-                user.getEmail(), user.getFirstName(), claim.getId(), decision.name());
-        } catch (Exception e) {
-            System.err.println("Failed to send claim decision email for claim "
-                    + claim.getId() + ": " + e.getMessage());
-        }
-    }
-
     private ClaimResponse toResponse(Claim claim) {
         return new ClaimResponse(
-                claim.getId(),
-                claim.getPolicyId(),
-                claim.getAmount(),
-                claim.getStatus(),
+                claim.getId(), claim.getPolicyId(), claim.getAmount(), claim.getStatus(),
                 claim.getTimeOfCreation(),
-                claim.getClaimForm()   != null,
-                claim.getAadhaarCard() != null,
-                claim.getEvidences()   != null
+                claim.getClaimForm() != null, claim.getAadhaarCard() != null, claim.getEvidences() != null
         );
     }
 }

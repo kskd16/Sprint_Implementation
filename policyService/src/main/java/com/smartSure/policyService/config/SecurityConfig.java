@@ -13,6 +13,19 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Security Configuration for PolicyService.
+ *
+ * Public endpoints (no token required):
+ *   GET /api/policy-types/**
+ *   POST /api/policies/calculate-premium
+ *
+ * All other endpoints require a valid JWT token.
+ * Role-based access is enforced via @PreAuthorize in PolicyController and PolicyTypeController.
+ *
+ * @author SmartSure Development Team
+ * @version 2.1
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -30,12 +43,12 @@ public class SecurityConfig {
                 .authenticationEntryPoint((request, response, e) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Unauthorized — valid JWT required\"}");
+                    response.getWriter().write("{\"error\": \"Unauthorized - valid JWT required\"}");
                 })
                 .accessDeniedHandler((request, response, e) -> {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Forbidden — insufficient role\"}");
+                    response.getWriter().write("{\"error\": \"Forbidden - insufficient role\"}");
                 })
             )
             .authorizeHttpRequests(auth -> auth
@@ -43,7 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/policy-types/**").permitAll()
-                .requestMatchers("/api/policies/calculate-premium").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/policies/calculate-premium").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

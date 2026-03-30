@@ -1,0 +1,320 @@
+# ===================================================================
+# SmartSure Insurance Management System - Docker Compose
+#
+# Services:
+#   Infrastructure: postgres, redis, rabbitmq, zipkin
+#   Platform:       service-registry, api-gateway
+#   Microservices:  auth-service, policy-service, claim-service,
+#                   admin-service, payment-service
+#
+# Start order:
+#   1. Infrastructure (postgres, redis, rabbitmq, zipkin)
+#   2. service-registry (Eureka)
+#   3. All microservices (depend on service-registry)
+#   4. api-gateway (depends on all microservices)
+#
+# Usage:
+#   docker-compose up --build        # first time
+#   docker-compose up -d             # background
+#   docker-compose down -v           # stop and remove volumes
+# ===================================================================
+
+networks:
+  smartsure-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+
+services:
+
+  # ===================================================================
+  # INFRASTRUCTURE SERVICES
+  # ===================================================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartsure-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_MULTIPLE_DATABASES: auth_db,policy_db,claim_db,admin_db,payment_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    ports:
+      - "5433:5432"
+    networks:
+      - smartsure-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartsure-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - smartsure-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: smartsure-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # RabbitMQ Management UI
+    networks:
+      - smartsure-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: smartsure-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - smartsure-network
+
+  # ===================================================================
+  # PLATFORM SERVICES
+  # ===================================================================
+
+  service-registry:
+    build:
+      context: ./service-registry
+      dockerfile: Dockerfile
+    container_name: smartsure-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - smartsure-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # ===================================================================
+  # MICROSERVICES
+  # ===================================================================
+
+  auth-service:
+    build:
+      context: ./authService
+      dockerfile: Dockerfile
+    container_name: smartsure-auth
+    ports:
+      - "8081:8081"
+    environment:
+      # Eureka — point to container name, not localhost
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      # Database — point to postgres container
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      # Redis — point to redis container
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # Zipkin — point to zipkin container
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      # JWT
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    networks:
+      - smartsure-network
+    restart: on-failure
+
+  policy-service:
+    build:
+      context: ./policyService
+      dockerfile: Dockerfile
+    container_name: smartsure-policy
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/policy_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    networks:
+      - smartsure-network
+    restart: on-failure
+
+  claim-service:
+    build:
+      context: ./claimService
+      dockerfile: Dockerfile
+    container_name: smartsure-claim
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/claim_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+      # Email — replace with your real Gmail app password
+      SPRING_MAIL_USERNAME: smartsure.notifications@gmail.com
+      SPRING_MAIL_PASSWORD: your-app-password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    networks:
+      - smartsure-network
+    restart: on-failure
+
+  admin-service:
+    build:
+      context: ./adminService
+      dockerfile: Dockerfile
+    container_name: smartsure-admin
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/admin_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    networks:
+      - smartsure-network
+    restart: on-failure
+
+  payment-service:
+    build:
+      context: ./paymentService
+      dockerfile: Dockerfile
+    container_name: smartsure-payment
+    ports:
+      - "8085:8085"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+      # Replace with your real Razorpay test keys
+      RAZORPAY_KEY_ID: rzp_test_your_key_id
+      RAZORPAY_KEY_SECRET: your_razorpay_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    networks:
+      - smartsure-network
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: ./apiGateway
+      dockerfile: Dockerfile
+    container_name: smartsure-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JWT_SECRET: mysupersecretkeymysupersecretkey12345
+      JWT_EXPIRATION: 3600000
+    depends_on:
+      - auth-service
+      - policy-service
+      - claim-service
+      - admin-service
+      - payment-service
+    networks:
+      - smartsure-network
+    restart: on-failure

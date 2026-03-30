@@ -76,9 +76,9 @@ public class AdminService {
         return policyFeignClient.getAllPolicies();
     }
 
-    // Get a single policy by ID — passes adminId and ADMIN role so policyService skips ownership check
+    // Get a single policy by ID — JWT forwarded via FeignClientInterceptor
     public PolicyDTO getPolicyById(Long policyId) {
-        return policyFeignClient.getPolicyById(policyId, policyId, "ADMIN");
+        return policyFeignClient.getPolicyById(policyId);
     }
 
     // Cancel a policy — uses admin status update endpoint with CANCELLED status

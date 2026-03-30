@@ -1,6 +1,5 @@
 package com.smartSure.adminService.controller;
 
-import com.smartSure.adminService.dto.AuditLogDTO;
 import com.smartSure.adminService.dto.ClaimDTO;
 import com.smartSure.adminService.dto.ClaimStatusUpdateRequest;
 import com.smartSure.adminService.dto.PolicyDTO;
@@ -14,11 +13,21 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Admin REST Controller for SmartSure Insurance Management System.
+ *
+ * All endpoints require ADMIN role.
+ * Admin ID is extracted from the JWT principal — no X-Admin-Id header needed.
+ *
+ * @author SmartSure Development Team
+ * @version 2.1
+ */
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -50,33 +59,44 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getClaimById(claimId));
     }
 
-    // Admin starts reviewing a claim — moves it from SUBMITTED → UNDER_REVIEW
+    /**
+     * Mark claim as under review.
+     * Admin ID extracted from JWT principal — no X-Admin-Id header needed.
+     */
     @PutMapping("/claims/{claimId}/review")
     @Operation(summary = "Mark claim as under review")
     public ResponseEntity<ClaimDTO> markUnderReview(
             @PathVariable Long claimId,
-            @RequestHeader("X-Admin-Id") Long adminId) {
-        return ResponseEntity.ok(adminService.markUnderReview(adminId, claimId));
+            @AuthenticationPrincipal String adminId) {
+        return ResponseEntity.ok(adminService.markUnderReview(Long.parseLong(adminId), claimId));
     }
 
-    // Admin approves a claim — moves it to APPROVED and logs the action
+    /**
+     * Approve a claim — triggers RabbitMQ event → email sent to customer.
+     * Admin ID extracted from JWT principal — no X-Admin-Id header needed.
+     */
     @PutMapping("/claims/{claimId}/approve")
     @Operation(summary = "Approve a claim")
     public ResponseEntity<ClaimDTO> approveClaim(
             @PathVariable Long claimId,
-            @RequestHeader("X-Admin-Id") Long adminId,
+            @AuthenticationPrincipal String adminId,
             @RequestBody ClaimStatusUpdateRequest request) {
-        return ResponseEntity.ok(adminService.approveClaim(adminId, claimId, request.getRemarks()));
+        return ResponseEntity.ok(
+                adminService.approveClaim(Long.parseLong(adminId), claimId, request.getRemarks()));
     }
 
-    // Admin rejects a claim — moves it to REJECTED and logs the action
+    /**
+     * Reject a claim — triggers RabbitMQ event → email sent to customer.
+     * Admin ID extracted from JWT principal — no X-Admin-Id header needed.
+     */
     @PutMapping("/claims/{claimId}/reject")
     @Operation(summary = "Reject a claim")
     public ResponseEntity<ClaimDTO> rejectClaim(
             @PathVariable Long claimId,
-            @RequestHeader("X-Admin-Id") Long adminId,
+            @AuthenticationPrincipal String adminId,
             @RequestBody ClaimStatusUpdateRequest request) {
-        return ResponseEntity.ok(adminService.rejectClaim(adminId, claimId, request.getRemarks()));
+        return ResponseEntity.ok(
+                adminService.rejectClaim(Long.parseLong(adminId), claimId, request.getRemarks()));
     }
 
     // ==================== POLICY MANAGEMENT ====================
@@ -93,14 +113,18 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPolicyById(policyId));
     }
 
-    // Admin cancels a policy — calls policyService and logs the action
+    /**
+     * Cancel a policy.
+     * Admin ID extracted from JWT principal — no X-Admin-Id header needed.
+     */
     @PutMapping("/policies/{policyId}/cancel")
     @Operation(summary = "Cancel a policy")
     public ResponseEntity<PolicyDTO> cancelPolicy(
             @PathVariable Long policyId,
-            @RequestHeader("X-Admin-Id") Long adminId,
+            @AuthenticationPrincipal String adminId,
             @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(adminService.cancelPolicy(adminId, policyId, reason));
+        return ResponseEntity.ok(
+                adminService.cancelPolicy(Long.parseLong(adminId), policyId, reason));
     }
 
     // ==================== USER MANAGEMENT ====================
@@ -148,8 +172,6 @@ public class AdminController {
         return ResponseEntity.ok(
                 auditLogService.getLogsByDateRange(
                         LocalDateTime.parse(from),
-                        LocalDateTime.parse(to)
-                )
-        );
+                        LocalDateTime.parse(to)));
     }
 }

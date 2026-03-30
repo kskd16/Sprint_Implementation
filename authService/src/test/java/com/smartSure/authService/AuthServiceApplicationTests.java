@@ -2,12 +2,30 @@ package com.smartSure.authService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
-@SpringBootTest
+/**
+ * Smoke test — verifies the Spring application context loads without errors.
+ * Infrastructure (DB, Redis) is replaced with test properties.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@TestPropertySource(properties = {
+    "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
+    "spring.datasource.driver-class-name=org.h2.Driver",
+    "spring.datasource.username=sa",
+    "spring.datasource.password=",
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+    "spring.data.redis.host=localhost",
+    "spring.data.redis.port=6379",
+    "spring.cache.type=none",
+    "eureka.client.enabled=false",
+    "spring.cloud.discovery.enabled=false",
+    "management.tracing.enabled=false"
+})
 class AuthServiceApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+    }
 }

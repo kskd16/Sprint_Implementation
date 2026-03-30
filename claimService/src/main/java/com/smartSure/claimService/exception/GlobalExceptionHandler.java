@@ -2,6 +2,8 @@ package com.smartSure.claimService.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -10,6 +12,20 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", "Forbidden — insufficient role");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(map);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, String>> handleAuthentication(AuthenticationException ex) {
+        Map<String, String> map = new HashMap<>();
+        map.put("Error", "Unauthorized — valid JWT required");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(map);
+    }
 
     @ExceptionHandler(ClaimNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleClaimNotFound(ClaimNotFoundException ex) {
